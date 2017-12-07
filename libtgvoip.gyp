@@ -371,7 +371,7 @@
             },
           ],
           [
-            '"<(OS)" == "linux"', {
+            '"<(OS)" == "freebsd"', {
               'defines': [
                 'WEBRTC_POSIX',
               ],
