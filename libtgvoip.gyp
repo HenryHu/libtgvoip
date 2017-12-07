@@ -13,11 +13,12 @@
         'variables': {
           'tgvoip_src_loc': '.',
           'official_build_target%': '',
-          'linux_path_opus_include%': '<(DEPTH)/../../../Libraries/opus/include',
+          'linux_path_opus_include%': '/usr/local/include/opus',
         },
         'include_dirs': [
           '<(tgvoip_src_loc)/webrtc_dsp',
           '<(linux_path_opus_include)',
+          '/usr/local/include/',
         ],
         'direct_dependent_settings': {
           'include_dirs': [
@@ -377,6 +378,7 @@
               ],
               'cflags_cc': [
                 '-msse2',
+                '-std=c++11',
               ],
               'direct_dependent_settings': {
                 'libraries': [
