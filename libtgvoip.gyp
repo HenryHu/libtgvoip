@@ -387,6 +387,9 @@
               'defines': [
                 'WEBRTC_POSIX',
               ],
+              'cflags_cc': [
+                '-std=c++11',
+              ],
               'conditions': [
                 [ '"<!(uname -m)" == "i386"', {
                   'cflags_cc': [
