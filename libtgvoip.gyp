@@ -13,7 +13,7 @@
         'variables': {
           'tgvoip_src_loc': '.',
           'official_build_target%': '',
-          'linux_path_opus_include%': '%%LOCALBASE%%/opus/include',
+          'linux_path_opus_include%': '%%LOCALBASE%%/include/opus',
         },
         'include_dirs': [
           '<(tgvoip_src_loc)/webrtc_dsp',
