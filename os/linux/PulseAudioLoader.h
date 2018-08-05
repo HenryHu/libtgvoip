@@ -9,6 +9,10 @@
 
 #include <pulse/pulseaudio.h>
 
+#ifndef typeof
+#define typeof __typeof__
+#endif
+
 #define DECLARE_DL_FUNCTION(name) static typeof(name)* _import_##name
 
 namespace tgvoip{

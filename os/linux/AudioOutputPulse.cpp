@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <dlfcn.h>
 #include <unistd.h>
+#include <libgen.h>
 #include "AudioOutputPulse.h"
 #include "../../logging.h"
 #include "../../VoIPController.h"
