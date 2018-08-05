@@ -42,6 +42,9 @@ namespace tgvoip{
 #ifdef __APPLE__
 #include "os/darwin/DarwinSpecific.h"
 #endif
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif
 
 namespace tgvoip{
 	class Mutex{
@@ -114,7 +117,7 @@ namespace tgvoip{
 			if(self->name){
 #if defined(__FreeBSD__)
 				pthread_set_name_np(self->thread, self->name);
-#if !defined(__APPLE__) && !defined(__gnu_hurd__)
+#elif !defined(__APPLE__) && !defined(__gnu_hurd__)
 				pthread_setname_np(self->thread, self->name);
 #elif !defined(__gnu_hurd__)
 				pthread_setname_np(self->name);
