@@ -70,7 +70,7 @@ AudioOutputWASAPI::AudioOutputWASAPI(std::string deviceID){
 }
 
 AudioOutputWASAPI::~AudioOutputWASAPI(){
-	if(audioClient && isPlaying){
+	if(audioClient){
 		audioClient->Stop();
 	}
 
@@ -101,25 +101,15 @@ AudioOutputWASAPI::~AudioOutputWASAPI(){
 #endif
 }
 
-void AudioOutputWASAPI::Configure(uint32_t sampleRate, uint32_t bitsPerSample, uint32_t channels){
-	
-}
-
 void AudioOutputWASAPI::Start(){
 	isPlaying=true;
 	if(!thread){
-		thread=CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AudioOutputWASAPI::StartThread, this, 0, NULL);
+		thread=CreateThread(NULL, 0, AudioOutputWASAPI::StartThread, this, 0, NULL);
 	}
-	
-	if(audioClient)
-		audioClient->Start();
 }
 
 void AudioOutputWASAPI::Stop(){
 	isPlaying=false;
-
-	if(audioClient)
-		audioClient->Stop();
 }
 
 bool AudioOutputWASAPI::IsPlaying(){
@@ -201,7 +191,7 @@ void AudioOutputWASAPI::ActuallySetCurrentDevice(std::string deviceID){
 	currentDevice=deviceID;
 	HRESULT res;
 
-	if(audioClient && isPlaying){
+	if(audioClient){
 		res=audioClient->Stop();
 		CHECK_RES(res, "audioClient->Stop");
 	}
@@ -320,13 +310,12 @@ void AudioOutputWASAPI::ActuallySetCurrentDevice(std::string deviceID){
 	CHECK_RES(res, "audioSessionControl->RegisterAudioSessionNotification");
 #endif
 
-	if(isPlaying)
-		audioClient->Start();
+	audioClient->Start();
 
 	LOGV("set current output device done");
 }
 
-DWORD AudioOutputWASAPI::StartThread(void* arg) {
+DWORD WINAPI AudioOutputWASAPI::StartThread(void* arg) {
 	((AudioOutputWASAPI*)arg)->RunThread();
 	return 0;
 }
@@ -374,7 +363,11 @@ void AudioOutputWASAPI::RunThread() {
 			
 			size_t bytesAvailable=framesAvailable*2;
 			while(bytesAvailable>remainingDataLen){
-				InvokeCallback(remainingData+remainingDataLen, 960*2);
+				if(isPlaying){
+					InvokeCallback(remainingData+remainingDataLen, 960*2);
+				}else{
+					memset(remainingData+remainingDataLen, 0, 960*2);
+				}
 				remainingDataLen+=960*2;
 			}
 			memcpy(data, remainingData, bytesAvailable);

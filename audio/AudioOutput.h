@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <memory>
 #include "../MediaStreamItf.h"
 
 namespace tgvoip{
@@ -23,19 +24,13 @@ public:
 	AudioOutput();
 	AudioOutput(std::string deviceID);
 	virtual ~AudioOutput();
-	virtual void Configure(uint32_t sampleRate, uint32_t bitsPerSample, uint32_t channels)=0;
 	virtual bool IsPlaying()=0;
-    virtual float GetLevel();
 	static int32_t GetEstimatedDelay();
 	virtual std::string GetCurrentDevice();
 	virtual void SetCurrentDevice(std::string deviceID);
-	static AudioOutput* Create(std::string deviceID);
+	//static std::unique_ptr<AudioOutput> Create(std::string deviceID, void* platformSpecific);
 	static void EnumerateDevices(std::vector<AudioOutputDevice>& devs);
 	bool IsInitialized();
-
-#if defined(__ANDROID__)
-	static int systemVersion;
-#endif
 
 protected:
 	std::string currentDevice;

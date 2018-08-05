@@ -7,17 +7,17 @@
 #include "VoIPServerConfig.h"
 #include <stdlib.h>
 #include "logging.h"
+#include <sstream>
+#include <locale>
 
 using namespace tgvoip;
 
 ServerConfig* ServerConfig::sharedInstance=NULL;
 
 ServerConfig::ServerConfig(){
-	init_mutex(mutex);
 }
 
 ServerConfig::~ServerConfig(){
-	free_mutex(mutex);
 }
 
 ServerConfig *ServerConfig::GetSharedInstance(){
@@ -42,12 +42,12 @@ double ServerConfig::GetDouble(std::string name, double fallback){
 	MutexGuard sync(mutex);
 	if(ContainsKey(name)){
 		std::string val=config[name];
-		char* end;
-		const char* start=val.c_str();
-		double d=strtod(start, &end);
-		if(end!=start){
-			return d;
-		}
+		std::istringstream stm(val);
+		double rval=fallback;
+		stm.imbue(std::locale("C"));
+		stm >> rval;
+		if(!stm.fail())
+			return rval;
 	}
 	return fallback;
 }

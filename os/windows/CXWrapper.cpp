@@ -62,7 +62,7 @@ void VoIPControllerWrapper::SetPublicEndpoints(const Platform::Array<libtgvoip::
 		libtgvoip::Endpoint^ _ep = endpoints[i];
 		tgvoip::Endpoint ep;
 		ep.id = _ep->id;
-		ep.type = EP_TYPE_UDP_RELAY;
+		ep.type = Endpoint::TYPE_UDP_RELAY;
 		char buf[128];
 		if (_ep->ipv4){
 			WideCharToMultiByte(CP_UTF8, 0, _ep->ipv4->Data(), -1, buf, sizeof(buf), NULL, NULL);
@@ -145,10 +145,10 @@ void VoIPControllerWrapper::OnSignalBarsChangedInternal(int count){
 }
 
 void VoIPControllerWrapper::SetConfig(double initTimeout, double recvTimeout, DataSavingMode dataSavingMode, bool enableAEC, bool enableNS, bool enableAGC, Platform::String^ logFilePath, Platform::String^ statsDumpFilePath){
-	voip_config_t config{0};
-	config.init_timeout=initTimeout;
-	config.recv_timeout=recvTimeout;
-	config.data_saving=(int)dataSavingMode;
+	VoIPController::Config config{0};
+	config.initTimeout=initTimeout;
+	config.recvTimeout=recvTimeout;
+	config.dataSaving=(int)dataSavingMode;
 	config.enableAEC=enableAEC;
 	config.enableAGC=enableAGC;
 	config.enableNS=enableNS;

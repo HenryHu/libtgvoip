@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include "MediaStreamItf.h"
 #include "BlockingQueue.h"
-#include "BufferPool.h"
+#include "Buffers.h"
 #include "threading.h"
 
 #define JITTER_SLOT_COUNT 64
@@ -21,13 +21,6 @@
 #define JR_MISSING 2
 #define JR_BUFFERING 3
 
-struct jitter_packet_t{
-	unsigned char* buffer;
-	size_t size;
-	uint32_t timestamp;
-	double recvTimeDiff;
-};
-typedef struct jitter_packet_t jitter_packet_t;
 
 namespace tgvoip{
 class JitterBuffer{
@@ -36,11 +29,11 @@ public:
 	~JitterBuffer();
 	void SetMinPacketCount(uint32_t count);
 	int GetMinPacketCount();
-	int GetCurrentDelay();
+	unsigned int GetCurrentDelay();
 	double GetAverageDelay();
 	void Reset();
-	void HandleInput(unsigned char* data, size_t len, uint32_t timestamp);
-	size_t HandleOutput(unsigned char* buffer, size_t len, int offsetInSteps, int* playbackScaledDuration);
+	void HandleInput(unsigned char* data, size_t len, uint32_t timestamp, bool isEC);
+	size_t HandleOutput(unsigned char* buffer, size_t len, int offsetInSteps, bool advance, int& playbackScaledDuration, bool& isEC);
 	void Tick();
 	void GetAverageLateCount(double* out);
 	int GetAndResetLostPacketCount();
@@ -48,47 +41,55 @@ public:
 	double GetLastMeasuredDelay();
 
 private:
+	struct jitter_packet_t{
+		unsigned char* buffer;
+		size_t size;
+		uint32_t timestamp;
+		bool isEC;
+		double recvTimeDiff;
+	};
 	static size_t CallbackIn(unsigned char* data, size_t len, void* param);
 	static size_t CallbackOut(unsigned char* data, size_t len, void* param);
-	void PutInternal(jitter_packet_t* pkt);
-	int GetInternal(jitter_packet_t* pkt, int offset);
+	void PutInternal(jitter_packet_t* pkt, bool overwriteExisting);
+	int GetInternal(jitter_packet_t* pkt, int offset, bool advance);
 	void Advance();
 
 	BufferPool bufferPool;
-	tgvoip_mutex_t mutex;
+	Mutex mutex;
 	jitter_packet_t slots[JITTER_SLOT_COUNT];
-	int64_t nextTimestamp;
+	int64_t nextTimestamp=0;
 	uint32_t step;
-	uint32_t minDelay;
+	double minDelay=6;
 	uint32_t minMinDelay;
 	uint32_t maxMinDelay;
 	uint32_t maxUsedSlots;
 	uint32_t lastPutTimestamp;
 	uint32_t lossesToReset;
 	double resyncThreshold;
-	int lostCount;
-	int lostSinceReset;
-	int gotSinceReset;
-	bool wasReset;
-	bool needBuffering;
-	int delayHistory[64];
-	int lateHistory[64];
-	bool adjustingDelay;
-	unsigned int tickCount;
-	unsigned int latePacketCount;
-	unsigned int dontIncMinDelay;
-	unsigned int dontDecMinDelay;
-	int lostPackets;
-	double prevRecvTime;
-	double expectNextAtTime;
-	double deviationHistory[64];
-	int deviationPtr;
-	double lastMeasuredJitter;
-	double lastMeasuredDelay;
-	int outstandingDelayChange;
-	unsigned int dontChangeDelay;
-	double avgDelay;
-	//FILE* dump;
+	unsigned int lostCount=0;
+	unsigned int lostSinceReset=0;
+	unsigned int gotSinceReset=0;
+	bool wasReset=true;
+	bool needBuffering=true;
+	HistoricBuffer<int, 64, double> delayHistory;
+	HistoricBuffer<int, 64, double> lateHistory;
+	bool adjustingDelay=false;
+	unsigned int tickCount=0;
+	unsigned int latePacketCount=0;
+	unsigned int dontIncMinDelay=0;
+	unsigned int dontDecMinDelay=0;
+	int lostPackets=0;
+	double prevRecvTime=0;
+	double expectNextAtTime=0;
+	HistoricBuffer<double, 64> deviationHistory;
+	double lastMeasuredJitter=0;
+	double lastMeasuredDelay=0;
+	int outstandingDelayChange=0;
+	unsigned int dontChangeDelay=0;
+	double avgDelay=0;
+#ifdef TGVOIP_DUMP_JITTER_STATS
+	FILE* dump;
+#endif
 };
 }
 
