@@ -13,11 +13,12 @@
         'variables': {
           'tgvoip_src_loc': '.',
           'official_build_target%': '',
-          'linux_path_opus_include%': '<(DEPTH)/../../../Libraries/opus/include',
+          'linux_path_opus_include%': '<%%LOCALBASE%%/opus/include',
         },
         'include_dirs': [
           '<(tgvoip_src_loc)/webrtc_dsp',
           '<(linux_path_opus_include)',
+          '%%LOCALBASE%%/include/',
         ],
         'direct_dependent_settings': {
           'include_dirs': [
@@ -263,7 +264,7 @@
             },
           ],
           [
-            '"<(OS)" != "linux"', {
+            '"<(OS)" != "freebsd"', {
               'sources/': [['exclude', '<(tgvoip_src_loc)/os/linux/']],
             },
           ],
@@ -382,12 +383,12 @@
             },
           ],
           [
-            '"<(OS)" == "linux"', {
+            '"<(OS)" == "freebsd"', {
               'defines': [
                 'WEBRTC_POSIX',
               ],
               'conditions': [
-                [ '"<!(uname -m)" == "i686"', {
+                [ '"<!(uname -m)" == "i386"', {
                   'cflags_cc': [
                     '-msse2',
                   ],
