@@ -85,11 +85,14 @@ namespace tgvoip{
 		}
 
 		void Start(){
-			pthread_create(&thread, NULL, Thread::ActualEntryPoint, this);
+			if(pthread_create(&thread, NULL, Thread::ActualEntryPoint, this)==0){
+				valid=true;
+			}
 		}
 
 		void Join(){
-			pthread_join(thread, NULL);
+			if(valid)
+				pthread_join(thread, NULL);
 		}
 
 		void SetName(const char* name){
@@ -108,7 +111,7 @@ namespace tgvoip{
 		}
 
 		bool IsCurrent(){
-			return thread==pthread_self();
+			return pthread_equal(thread, pthread_self())!=0;
 		}
 
 	private:
@@ -134,6 +137,7 @@ namespace tgvoip{
 		pthread_t thread;
 		const char* name;
 		bool maxPriority=false;
+		bool valid=false;
 	};
 }
 
@@ -247,6 +251,7 @@ namespace tgvoip{
 	public:
 		Thread(MethodPointerBase* entry, void* arg) : entry(entry), arg(arg){
 			name=NULL;
+			thread=NULL;
 		}
 
 		~Thread(){
@@ -258,6 +263,8 @@ namespace tgvoip{
 		}
 
 		void Join(){
+			if(!thread)
+				return;
 #if !defined(WINAPI_FAMILY) || WINAPI_FAMILY!=WINAPI_FAMILY_PHONE_APP
 			WaitForSingleObject(thread, INFINITE);
 #else

@@ -50,6 +50,7 @@ namespace tgvoip{
 	public:
 		BufferOutputStream(size_t size);
 		BufferOutputStream(unsigned char* buffer, size_t size);
+		BufferOutputStream(const BufferOutputStream& other)=delete;
 		~BufferOutputStream();
 		void WriteByte(unsigned char byte);
 		void WriteInt64(int64_t i);
@@ -61,10 +62,23 @@ namespace tgvoip{
 		size_t GetLength();
 		void Reset();
 		void Rewind(size_t numBytes);
+		
+		BufferOutputStream& operator=(BufferOutputStream&& other){
+			if(this!=&other){
+				if(!bufferProvided && buffer)
+					free(buffer);
+				buffer=other.buffer;
+				offset=other.offset;
+				size=other.size;
+				bufferProvided=other.bufferProvided;
+				other.buffer=NULL;
+			}
+			return *this;
+		}
 
 	private:
 		void ExpandBufferIfNeeded(size_t need);
-		unsigned char* buffer;
+		unsigned char* buffer=NULL;
 		size_t size;
 		size_t offset;
 		bool bufferProvided;
@@ -90,7 +104,10 @@ namespace tgvoip{
 	class Buffer{
 	public:
 		Buffer(size_t capacity){
-			data=(unsigned char *) malloc(capacity);
+			if(capacity>0)
+				data=(unsigned char *) malloc(capacity);
+			else
+				data=NULL;
 			length=capacity;
 		};
 		Buffer(const Buffer& other)=delete;
@@ -111,6 +128,7 @@ namespace tgvoip{
 		~Buffer(){
 			if(data)
 				free(data);
+			data=NULL;
 		};
 		Buffer& operator=(Buffer&& other){
 			if(this!=&other){

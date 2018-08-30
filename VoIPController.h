@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <atomic>
 #include "audio/AudioInput.h"
 #include "BlockingQueue.h"
 #include "audio/AudioOutput.h"
@@ -34,7 +35,7 @@
 #include "PacketReassembler.h"
 #include "MessageThread.h"
 
-#define LIBTGVOIP_VERSION "2.2"
+#define LIBTGVOIP_VERSION "2.2.3"
 
 #ifdef _WIN32
 #undef GetCurrentTime
@@ -384,9 +385,8 @@ namespace tgvoip{
 		struct PendingOutgoingPacket{
 			uint32_t seq;
 			unsigned char type;
-			//Buffer data;
 			size_t len;
-			unsigned char* data;
+			Buffer data;
 			int64_t endpoint;
 		};
 		struct SegmentedPacket{
@@ -413,6 +413,7 @@ namespace tgvoip{
 		virtual void SendExtra(Buffer& data, unsigned char type);
 		void SendStreamFlags(Stream& stream);
 		void InitializeTimers();
+		void ResetEndpointPingStats();
 
 	private:
 		struct Stream{
@@ -436,6 +437,7 @@ namespace tgvoip{
 		};
 		enum{
 			UDP_UNKNOWN=0,
+			UDP_PING_PENDING,
 			UDP_PING_SENT,
 			UDP_AVAILABLE,
 			UDP_NOT_AVAILABLE,
@@ -475,6 +477,7 @@ namespace tgvoip{
 		void UpdateQueuedPackets();
 		void SendNopPacket();
 		void TickJitterBufferAngCongestionControl();
+		void ResetUdpAvailability();
 
 		int state;
 		std::vector<std::shared_ptr<Endpoint>> endpoints;
@@ -552,7 +555,6 @@ namespace tgvoip{
 		NetworkSocket* openingTcpSocket;
 		HistoricBuffer<unsigned char, 4, int> signalBarsHistory;
 
-		BufferPool outgoingPacketsBufferPool;
 		int udpConnectivityState;
 		double lastUdpPingTime;
 		int udpPingCount;
@@ -591,9 +593,12 @@ namespace tgvoip{
 		int publicEndpointsReqCount=0;
 		MessageThread messageThread;
 		bool wasEstablished=false;
+		bool receivedFirstStreamPacket=false;
+		std::atomic<unsigned int> unsentStreamPackets;
 
 		uint32_t initTimeoutID=MessageThread::INVALID_ID;
 		uint32_t noStreamsNopID=MessageThread::INVALID_ID;
+		uint32_t udpPingTimeoutID=MessageThread::INVALID_ID;
 
 		/*** server config values ***/
 		uint32_t maxAudioBitrate;
