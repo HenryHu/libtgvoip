@@ -52,6 +52,10 @@ int64_t VoIPController::win32TimeScale = 0;
 bool VoIPController::didInitWin32TimeScale = false;
 #endif
 
+#if defined(TGVOIP_USE_CALLBACK_AUDIO_IO)
+#include "audio/AudioIOCallback.h"
+#endif
+
 #ifndef TGVOIP_USE_CUSTOM_CRYPTO
 extern "C" {
 #include <openssl/sha.h>
@@ -347,10 +351,14 @@ void VoIPController::Stop(){
 	{
 		LOGD("Before stop audio I/O");
 		MutexGuard m(audioIOMutex);
-		if(audioInput)
+		if(audioInput){
 			audioInput->Stop();
-		if(audioOutput)
+			audioInput->SetCallback(NULL, NULL);
+		}
+		if(audioOutput){
 			audioOutput->Stop();
+			audioOutput->SetCallback(NULL, NULL);
+		}
 	}
 	LOGD("Left VoIPController::Stop");
 }
@@ -2375,7 +2383,13 @@ void VoIPController::SetConfig(const Config& cfg){
 		tgvoipLogFile=NULL;
 	}
 	if(!config.logFilePath.empty()){
+#ifndef _WIN32
 		tgvoipLogFile=fopen(config.logFilePath.c_str(), "a");
+#else
+		if(_wfopen_s(&tgvoipLogFile, config.logFilePath.c_str(), L"a")!=0){
+			tgvoipLogFile=NULL;
+		}
+#endif
 		tgvoip_log_file_write_header(tgvoipLogFile);
 	}else{
 		tgvoipLogFile=NULL;
@@ -2385,11 +2399,17 @@ void VoIPController::SetConfig(const Config& cfg){
 		statsDump=NULL;
 	}
 	if(!config.statsDumpFilePath.empty()){
+#ifndef _WIN32
 		statsDump=fopen(config.statsDumpFilePath.c_str(), "w");
+#else
+		if(_wfopen_s(&statsDump, config.statsDumpFilePath.c_str(), L"w")!=0){
+			statsDump=NULL;
+		}
+#endif
 		if(statsDump)
 			fprintf(statsDump, "Time\tRTT\tLRSeq\tLSSeq\tLASeq\tLostR\tLostS\tCWnd\tBitrate\tLoss%%\tJitter\tJDelay\tAJDelay\n");
-		else
-			LOGW("Failed to open stats dump file %s for writing", config.statsDumpFilePath.c_str());
+		//else
+		//	LOGW("Failed to open stats dump file %s for writing", config.statsDumpFilePath.c_str());
 	}else{
 		statsDump=NULL;
 	}
@@ -2639,17 +2659,11 @@ void VoIPController::StartAudio(){
 	encoder->SetEchoCanceller(echoCanceller);
 	encoder->SetSecondaryEncoderEnabled(false);
 
-	encoder->Start();
-	if(!micMuted){
-		audioInput->Start();
-		if(!audioInput->IsInitialized()){
-			LOGE("Erorr initializing audio capture");
-			lastError=ERROR_AUDIO_IO;
-
-			SetState(STATE_FAILED);
-			return;
-		}
-	}
+#if defined(TGVOIP_USE_CALLBACK_AUDIO_IO)
+	dynamic_cast<audio::AudioInputCallback*>(audioInput)->SetDataCallback(audioInputDataCallback);
+	dynamic_cast<audio::AudioOutputCallback*>(audioOutput)->SetDataCallback(audioOutputDataCallback);
+#endif
+	
 	if(!audioOutput->IsInitialized()){
 		LOGE("Erorr initializing audio playback");
 		lastError=ERROR_AUDIO_IO;
@@ -2674,6 +2688,18 @@ void VoIPController::StartAudio(){
 		jitterBuffer->SetMinPacketCount((uint32_t) ServerConfig::GetSharedInstance()->GetInt("jitter_initial_delay_20", 6));*/
 	//audioOutput->Start();
 	OnAudioOutputReady();
+
+	encoder->Start();
+	if(!micMuted){
+		audioInput->Start();
+		if(!audioInput->IsInitialized()){
+			LOGE("Erorr initializing audio capture");
+			lastError=ERROR_AUDIO_IO;
+
+			SetState(STATE_FAILED);
+			return;
+		}
+	}
 }
 
 void VoIPController::OnAudioOutputReady(){
@@ -2775,6 +2801,17 @@ void VoIPController::ResetEndpointPingStats(){
 		e->averageRTT=0.0;
 		e->rtts.Reset();
 	}
+}
+
+#if defined(TGVOIP_USE_CALLBACK_AUDIO_IO)
+void VoIPController::SetAudioDataCallbacks(std::function<void(int16_t*, size_t)> input, std::function<void(int16_t*, size_t)> output){
+	audioInputDataCallback=input;
+	audioOutputDataCallback=output;
+}
+#endif
+
+int VoIPController::GetConnectionState(){
+	return state;
 }
 
 #pragma mark - Timer methods
