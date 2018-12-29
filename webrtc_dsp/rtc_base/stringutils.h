@@ -25,7 +25,7 @@
 #endif  // WEBRTC_WIN
 
 #if defined(WEBRTC_POSIX)
-#ifdef BSD
+#ifdef __FreeBSD__
 #include <stdlib.h>
 #else  // BSD
 #include <alloca.h>
