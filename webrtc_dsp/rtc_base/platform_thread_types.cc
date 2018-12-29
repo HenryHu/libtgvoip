@@ -11,8 +11,8 @@
 #include "rtc_base/platform_thread_types.h"
 
 #if defined(WEBRTC_LINUX)
-#include <sys/prctl.h>
-#include <sys/syscall.h>
+//#include <sys/prctl.h>
+//#include <sys/syscall.h>
 #endif
 
 namespace rtc {
@@ -28,7 +28,7 @@ PlatformThreadId CurrentThreadId() {
 #elif defined(WEBRTC_FUCHSIA)
   return zx_thread_self();
 #elif defined(WEBRTC_LINUX)
-  return syscall(__NR_gettid);
+  return getpid();
 #else
   // Default implementation for nacl and solaris.
   return reinterpret_cast<pid_t>(pthread_self());
