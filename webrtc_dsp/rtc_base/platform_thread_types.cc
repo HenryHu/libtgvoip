@@ -11,8 +11,12 @@
 #include "rtc_base/platform_thread_types.h"
 
 #if defined(WEBRTC_LINUX)
-//#include <sys/prctl.h>
-//#include <sys/syscall.h>
+#ifdef __FreeBSD__
+#include <sys/thr.h>
+#else
+#include <sys/prctl.h>
+#include <sys/syscall.h>
+#endif
 #endif
 
 namespace rtc {
@@ -27,6 +31,10 @@ PlatformThreadId CurrentThreadId() {
   return gettid();
 #elif defined(WEBRTC_FUCHSIA)
   return zx_thread_self();
+#elif defined(__FreeBSD__)
+  long tid;
+  thr_self(&tid);
+  return tid;
 #elif defined(WEBRTC_LINUX)
   return getpid();
 #else
