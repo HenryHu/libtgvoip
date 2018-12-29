@@ -57,7 +57,7 @@ void AudioOutputALSA::Start(){
 		return;
 
 	isPlaying=true;
-	thread=new Thread(new MethodPointer<AudioOutputALSA>(&AudioOutputALSA::RunThread, this), NULL);
+	thread=new Thread(std::bind(&AudioOutputALSA::RunThread, this));
 	thread->SetName("AudioOutputALSA");
 	thread->Start();
 }
@@ -75,7 +75,7 @@ void AudioOutputALSA::Stop(){
 bool AudioOutputALSA::IsPlaying(){
 	return isPlaying;
 }
-void AudioOutputALSA::RunThread(void* arg){
+void AudioOutputALSA::RunThread(){
 	unsigned char buffer[BUFFER_SIZE*2];
 	snd_pcm_sframes_t frames;
 	while(isPlaying){
