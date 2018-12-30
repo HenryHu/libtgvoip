@@ -36,7 +36,7 @@ PlatformThreadId CurrentThreadId() {
   thr_self(&tid);
   return tid;
 #elif defined(WEBRTC_LINUX)
-  return getpid();
+  return syscall(__NR_gettid);
 #else
   // Default implementation for nacl and solaris.
   return reinterpret_cast<pid_t>(pthread_self());
