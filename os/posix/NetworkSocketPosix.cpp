@@ -162,7 +162,7 @@ void NetworkSocketPosix::Send(NetworkPacket *packet){
     			LOGI("Network unreachable, trying NAT64");
     		}
 		}
-	}else if(res!=packet->length && packet->protocol==PROTO_TCP){
+	}else if((size_t)res!=packet->length && packet->protocol==PROTO_TCP){
 		if(pendingOutgoingPacket){
 			LOGE("send returned less than packet length but there's already a pending packet");
 			failed=true;
@@ -378,9 +378,11 @@ std::string NetworkSocketPosix::GetLocalInterfaceInfo(IPv4Address *v4addr, IPv6A
 		jstring jitfName=static_cast<jstring>(env->GetObjectArrayElement(jinfo, 0));
 		jstring jipv4=static_cast<jstring>(env->GetObjectArrayElement(jinfo, 1));
 		jstring jipv6=static_cast<jstring>(env->GetObjectArrayElement(jinfo, 2));
-		const char* itfchars=env->GetStringUTFChars(jitfName, NULL);
-		name=std::string(itfchars);
-		env->ReleaseStringUTFChars(jitfName, itfchars);
+		if(jitfName){
+			const char *itfchars=env->GetStringUTFChars(jitfName, NULL);
+			name=std::string(itfchars);
+			env->ReleaseStringUTFChars(jitfName, itfchars);
+		}
 
 		if(v4addr && jipv4){
 			const char* ipchars=env->GetStringUTFChars(jipv4, NULL);

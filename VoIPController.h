@@ -39,7 +39,7 @@
 #include "MessageThread.h"
 #include "utils.h"
 
-#define LIBTGVOIP_VERSION "2.4"
+#define LIBTGVOIP_VERSION "2.4.1"
 
 #ifdef _WIN32
 #undef GetCurrentTime
@@ -158,22 +158,24 @@ namespace tgvoip{
 	};
 
 	class AudioInputDevice : public AudioDevice{
-
+	
 	};
-
-	struct EncodedVideoFrame{
-		unsigned char* data;
-		size_t size;
-		uint32_t flags;
-
-		EncodedVideoFrame(size_t size){
-			this->size=size;
-			data=(unsigned char*)malloc(size);
+	
+	class AudioInputTester{
+	public:
+		AudioInputTester(const std::string deviceID);
+		~AudioInputTester();
+		TGVOIP_DISALLOW_COPY_AND_ASSIGN(AudioInputTester);
+		float GetAndResetLevel();
+		bool Failed(){
+			return io && io->Failed();
 		}
-
-		~EncodedVideoFrame(){
-			free(data);
-		}
+	private:
+		void Update(int16_t* samples, size_t count);
+		audio::AudioIO* io=NULL;
+		audio::AudioInput* input=NULL;
+		int16_t maxSample=0;
+		std::string deviceID;
 	};
 
 	class VoIPController{
@@ -207,6 +209,9 @@ namespace tgvoip{
 			bool enableAGC;
 
 			bool enableCallUpgrade;
+
+			bool logPacketStats=false;
+			bool enableVolumeControl=false;
 		};
 
 		struct TrafficStats{
@@ -308,12 +313,6 @@ namespace tgvoip{
 		std::string GetDebugLog();
 		/**
 		 *
-		 * @param buffer
-		 */
-		void GetDebugLog(char* buffer);
-		size_t GetDebugLogLength();
-		/**
-		 *
 		 * @return
 		 */
 		static std::vector<AudioInputDevice> EnumerateAudioInputs();
@@ -388,6 +387,15 @@ namespace tgvoip{
 		static int32_t GetConnectionMaxLayer(){
 			return 92;
 		};
+		/**
+		 * Get the persistable state of the library, like proxy capabilities, to save somewhere on the disk. Call this at the end of the call.
+		 * Using this will speed up the connection establishment in some cases.
+		 */
+		std::vector<uint8_t> GetPersistentState();
+		/**
+		 * Load the persistable state. Call this before starting the call.
+		 */
+		void SetPersistentState(std::vector<uint8_t> state);
 
 #if defined(TGVOIP_USE_CALLBACK_AUDIO_IO)
 		void SetAudioDataCallbacks(std::function<void(int16_t*, size_t)> input, std::function<void(int16_t*, size_t)> output);
@@ -409,6 +417,12 @@ namespace tgvoip{
 		};
 		void SetVideoSource(video::VideoSource* source);
 		void SetVideoRenderer(video::VideoRenderer* renderer);
+		
+		void SetInputVolume(float level);
+		void SetOutputVolume(float level);
+#if defined(__APPLE__) && defined(TARGET_OS_OSX)
+		void SetAudioOutputDuckingEnabled(bool enabled);
+#endif
 
 	private:
 		struct Stream;
@@ -422,13 +436,11 @@ namespace tgvoip{
 			double ackTime;
 		};
 		struct PendingOutgoingPacket{
-#if defined(_MSC_VER) && _MSC_VER <= 1800 // VS2013 doesn't support auto-generating move constructors
-			//TGVOIP_DISALLOW_COPY_AND_ASSIGN(PendingOutgoingPacket);
 			PendingOutgoingPacket(uint32_t seq, unsigned char type, size_t len, Buffer&& data, int64_t endpoint){
 				this->seq=seq;
 				this->type=type;
 				this->len=len;
-				this->data=data;
+				this->data=std::move(data);
 				this->endpoint=endpoint;
 			}
 			PendingOutgoingPacket(PendingOutgoingPacket&& other){
@@ -438,7 +450,17 @@ namespace tgvoip{
 				data=std::move(other.data);
 				endpoint=other.endpoint;
 			}
-#endif
+			PendingOutgoingPacket& operator=(PendingOutgoingPacket&& other){
+				if(this!=&other){
+					seq=other.seq;
+					type=other.type;
+					len=other.len;
+					data=std::move(other.data);
+					endpoint=other.endpoint;
+				}
+				return *this;
+			}
+			TGVOIP_DISALLOW_COPY_AND_ASSIGN(PendingOutgoingPacket);
 			uint32_t seq;
 			unsigned char type;
 			size_t len;
@@ -488,6 +510,7 @@ namespace tgvoip{
 		Endpoint* GetEndpointForPacket(const PendingOutgoingPacket& pkt);
 		bool SendOrEnqueuePacket(PendingOutgoingPacket pkt, bool enqueue=true);
 		static std::string NetworkTypeToString(int type);
+		CellularCarrierInfo GetCarrierInfo();
 
 	private:
 		struct Stream{
@@ -533,6 +556,11 @@ namespace tgvoip{
 			UDP_NOT_AVAILABLE,
 			UDP_BAD
 		};
+		struct DebugLoggedPacket{
+			int32_t seq;
+			double timestamp;
+			int32_t length;
+		};
 
 		void RunRecvThread();
 		void RunSendThread();
@@ -550,7 +578,6 @@ namespace tgvoip{
 		Endpoint& GetEndpointByType(int type);
 		void SendPacketReliably(unsigned char type, unsigned char* data, size_t len, double retryInterval, double timeout);
 		uint32_t GenerateOutSeq();
-		void LogDebugInfo();
 		void ActuallySendPacket(NetworkPacket& pkt, Endpoint& ep);
 		void InitializeAudio();
 		void StartAudio();
@@ -567,6 +594,7 @@ namespace tgvoip{
 		void SendNopPacket();
 		void TickJitterBufferAngCongestionControl();
 		void ResetUdpAvailability();
+		std::string GetPacketTypeString(unsigned char type);
 
 		int state;
 		std::map<int64_t, Endpoint> endpoints;
@@ -630,7 +658,6 @@ namespace tgvoip{
 		TrafficStats stats;
 		bool receivedInit;
 		bool receivedInitAck;
-		std::vector<std::string> debugLogs;
 		bool isOutgoing;
 		NetworkSocket* udpSocket;
 		NetworkSocket* realUdpSocket;
@@ -656,8 +683,6 @@ namespace tgvoip{
 		std::string proxyPassword;
 		IPv4Address* resolvedProxyAddress;
 
-		AutomaticGainControl* outputAGC;
-		bool outputAGCEnabled;
 		uint32_t peerCapabilities;
 		Callbacks callbacks;
 		bool didReceiveGroupCallKey;
@@ -688,19 +713,31 @@ namespace tgvoip{
 		HistoricBuffer<unsigned int, 5> unsentStreamPacketsHistory;
 		bool needReInitUdpProxy=true;
 		bool needRate=false;
+		std::vector<DebugLoggedPacket> debugLoggedPackets;
 
 		uint32_t initTimeoutID=MessageThread::INVALID_ID;
 		uint32_t noStreamsNopID=MessageThread::INVALID_ID;
 		uint32_t udpPingTimeoutID=MessageThread::INVALID_ID;
+		
+		effects::Volume outputVolume;
+		effects::Volume inputVolume;
 
 #if defined(TGVOIP_USE_CALLBACK_AUDIO_IO)
 		std::function<void(int16_t*, size_t)> audioInputDataCallback;
 		std::function<void(int16_t*, size_t)> audioOutputDataCallback;
 #endif
-
+#if defined(__APPLE__) && defined(TARGET_OS_OSX)
+		bool macAudioDuckingEnabled=true;
+#endif
+		
 		video::VideoSource* videoSource=NULL;
 		video::VideoRenderer* videoRenderer=NULL;
 		double firstVideoFrameTime=0.0;
+		
+		/*** persistable state values ***/
+		bool proxySupportsUDP=true;
+		bool proxySupportsTCP=true;
+		std::string lastTestedProxyServer="";
 
 		/*** server config values ***/
 		uint32_t maxAudioBitrate;

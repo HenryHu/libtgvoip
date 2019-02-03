@@ -37,6 +37,9 @@ public:
 	void SetLevelMeter(AudioLevelMeter* levelMeter);
 	void SetCallback(void (*f)(unsigned char*, size_t, unsigned char*, size_t, void*), void* param);
 	void SetSecondaryEncoderEnabled(bool enabled);
+	void SetVadMode(bool vad);
+	void AddAudioEffect(effects::AudioEffect* effect);
+	void RemoveAudioEffect(effects::AudioEffect* effect);
 
 private:
 	static size_t Callback(unsigned char* data, size_t len, void* param);
@@ -63,6 +66,9 @@ private:
 	double strongCorrectionMultiplier;
 	AudioLevelMeter* levelMeter;
 	bool secondaryEncoderEnabled;
+	bool vadMode=false;
+	uint32_t vadNoVoiceBitrate;
+	std::vector<effects::AudioEffect*> postProcEffects;
 
 	void (*callback)(unsigned char*, size_t, unsigned char*, size_t, void*);
 	void* callbackParam;
