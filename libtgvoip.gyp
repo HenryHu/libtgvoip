@@ -67,6 +67,8 @@
           '<(tgvoip_src_loc)/MessageThread.h',
           '<(tgvoip_src_loc)/audio/AudioIO.cpp',
           '<(tgvoip_src_loc)/audio/AudioIO.h',
+          '<(tgvoip_src_loc)/video/ScreamCongestionController.cpp',
+          '<(tgvoip_src_loc)/video/ScreamCongestionController.h',
           '<(tgvoip_src_loc)/video/VideoSource.cpp',
           '<(tgvoip_src_loc)/video/VideoSource.h',
           '<(tgvoip_src_loc)/video/VideoRenderer.cpp',
@@ -771,6 +773,9 @@
                     '/usr/local/macold/include/c++/v1',
                     '<(DEPTH)/../../../Libraries/macold/openssl/include',
                   ],
+                  'defines': [
+                    'TARGET_OSX32',
+                  ],
                 }, {
                   'xcode_settings': {
                     'MACOSX_DEPLOYMENT_TARGET': '10.8',
@@ -779,13 +784,33 @@
                   'include_dirs': [
                     '<(DEPTH)/../../../Libraries/openssl/include',
                   ],
-                }]
-              ]
+                  'direct_dependent_settings': {
+                    'linkflags': [
+                      '-framework VideoToolbox',
+                    ],
+                  },
+                  'sources': [
+                   '<(tgvoip_src_loc)/os/darwin/TGVVideoRenderer.mm',
+                   '<(tgvoip_src_loc)/os/darwin/TGVVideoRenderer.h',
+                   '<(tgvoip_src_loc)/os/darwin/TGVVideoSource.mm',
+                   '<(tgvoip_src_loc)/os/darwin/TGVVideoSource.h',
+                   '<(tgvoip_src_loc)/os/darwin/VideoToolboxEncoderSource.mm',
+                   '<(tgvoip_src_loc)/os/darwin/VideoToolboxEncoderSource.h',
+                   '<(tgvoip_src_loc)/os/darwin/SampleBufferDisplayLayerRenderer.mm',
+                   '<(tgvoip_src_loc)/os/darwin/SampleBufferDisplayLayerRenderer.h',
+                  ],
+                }],
+                ['"<(official_build_target)" == "macstore"', {
+                 'defines': [
+                  'TGVOIP_NO_OSX_PRIVATE_API',
+                 ],
+                }],
+              ],
             },
           ],
           [
             '"<(OS)" == "win"', {
-              'msbuild_toolset': 'v141',
+              'msbuild_toolset': 'v142',
               'defines': [
                 'NOMINMAX',
                 '_USING_V110_SDK71_',
