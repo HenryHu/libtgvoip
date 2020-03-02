@@ -4,7 +4,8 @@ CFLAGS = -Wall -DHAVE_CONFIG_H -Wno-unknown-pragmas
 
 lib_LTLIBRARIES = libtgvoip.la
 
-SRC = VoIPController.cpp \
+SRC = TgVoip.cpp \
+VoIPController.cpp \
 Buffers.cpp \
 CongestionControl.cpp \
 EchoCanceller.cpp \
@@ -29,6 +30,7 @@ video/ScreamCongestionController.cpp \
 json11.cpp
 
 TGVOIP_HDRS = \
+TgVoip.h \
 VoIPController.h \
 Buffers.h \
 BlockingQueue.h \
@@ -749,9 +751,12 @@ else
 CFLAGS += -DTGVOIP_NO_DSP
 endif
 
+libtgvoip_la_LDFLAGS = -version-number @LIBTGVOIP_MAJOR_VERSION@:@LIBTGVOIP_MINOR_VERSION@:@LIBTGVOIP_PATCH_VERSION@
 libtgvoip_la_SOURCES = $(SRC) $(TGVOIP_HDRS)
 tgvoipincludedir = $(includedir)/tgvoip
 nobase_tgvoipinclude_HEADERS = $(TGVOIP_HDRS)
+
+pkgconfig_DATA = tgvoip.pc
 
 CXXFLAGS += -std=gnu++0x $(CFLAGS)
 if TARGET_OS_OSX

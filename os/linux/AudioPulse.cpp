@@ -6,6 +6,7 @@
 
 #include "AudioPulse.h"
 #include <dlfcn.h>
+#include <libgen.h>
 #include "../../logging.h"
 #ifdef __FreeBSD__
 #include <libgen.h>
@@ -134,7 +135,7 @@ AudioPulse::AudioPulse(std::string inputDevice, std::string outputDevice){
 		LOGE("Failed to load libpulse");
 		return;
 	}
-		
+
 	mainloop=pa_threaded_mainloop_new();
 	if(!mainloop){
 		LOGE("Error initializing PulseAudio (pa_threaded_mainloop_new)");
@@ -196,7 +197,7 @@ AudioPulse::AudioPulse(std::string inputDevice, std::string outputDevice){
 	isLocked=false;
 
 	output=new AudioOutputPulse(context, mainloop, outputDevice);
-	input=new AudioInputPulse(context, mainloop, outputDevice);
+	input=new AudioInputPulse(context, mainloop, inputDevice);
 }
 
 AudioPulse::~AudioPulse(){
@@ -205,7 +206,7 @@ AudioPulse::~AudioPulse(){
 			pa_threaded_mainloop_unlock(mainloop);
 		pa_threaded_mainloop_stop(mainloop);
 	}
-	
+
 	if(input)
 		delete input;
 	if(output)
