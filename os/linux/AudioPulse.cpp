@@ -8,9 +8,6 @@
 #include <dlfcn.h>
 #include <libgen.h>
 #include "../../logging.h"
-#ifdef __FreeBSD__
-#include <libgen.h>
-#endif
 
 #define DECLARE_DL_FUNCTION(name) typeof(name)* AudioPulse::_import_##name=NULL
 #define CHECK_DL_ERROR(res, msg) if(!res){LOGE(msg ": %s", dlerror()); return false;}
